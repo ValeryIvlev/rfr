@@ -28,6 +28,8 @@ dependencies {
     testImplementation "org.springframework:spring-jdbc"
     testImplementation "org.hibernate.orm:hibernate-core"
     testImplementation "jakarta.persistence:jakarta.persistence-api"
+    testImplementation "com.google.code.findbugs:jsr305:3.0.2"
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     testCompileOnly "org.projectlombok:lombok"
     testAnnotationProcessor "org.projectlombok:lombok"

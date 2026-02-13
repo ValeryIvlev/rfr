@@ -2,6 +2,7 @@ package io.student.rangiffler;
 
 
 import io.student.rangiffler.config.Config;
+import io.student.rangiffler.jupiter.annotation.Photo;
 import io.student.rangiffler.jupiter.annotation.User;
 import io.student.rangiffler.jupiter.extension.UserExtension;
 import io.student.rangiffler.model.UserJson;
@@ -66,7 +67,12 @@ public class AuthTests {
                 .checkRegistrationFail(RegistrationResult.PASSWORD_NOT_EQUAL);
     }
 
-    @User
+    @User(
+            photos = @Photo(
+                    description = "bla bla bla"
+            )
+
+    )
     @Test
     @DisplayName("После успешного логина отображается главная страница")
     public void mainPageShouldBeDisplayedAfterSuccessLogin(UserJson userJson) {

@@ -1,13 +1,17 @@
 package io.student.rangiffler.data.repository.impl;
 
 import io.student.rangiffler.config.Config;
+import io.student.rangiffler.data.entity.CountryEntity;
 import io.student.rangiffler.data.entity.FriendshipStatus;
 import io.student.rangiffler.data.entity.UserEntity;
 import io.student.rangiffler.data.repository.UserdataUserRepository;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,6 +55,40 @@ public class UserdataUserRepositoryJdbc implements UserdataUserRepository {
             VALUES (UUID_TO_BIN(?, true), ?, ?, ?, ?, UUID_TO_BIN(?, true));
             """;
 
+    private static final String SQL_UPDATE_USER =
+            """
+            UPDATE `rangiffler-api`.`user`
+            SET username = ?, firstname = ?, lastName = ?, avatar = ?, country_id = UUID_TO_BIN(?, true)
+            WHERE id = UUID_TO_BIN(?, true);
+            """;
+
+    private static final String SQL_FIND_USER_BY_USERNAME =
+            """
+            SELECT
+                BIN_TO_UUID(id, true) AS id,
+                username,
+                firstname,
+                lastName,
+                avatar,
+                BIN_TO_UUID(country_id, true) AS country_id
+            FROM `rangiffler-api`.`user`
+            WHERE username = ?;
+            """;
+
+    private static final String SQL_FIND_ALL_USERS =
+            """
+            SELECT
+                BIN_TO_UUID(id, true) AS id,
+                username,
+                firstname,
+                lastName,
+                avatar,
+                BIN_TO_UUID(country_id, true) AS country_id
+            FROM `rangiffler-api`.`user`;
+            """;
+
+
+    @NotNull
     @Override
     public UserEntity create(UserEntity user) {
         if (user.getId() == null) {
@@ -64,7 +102,7 @@ public class UserdataUserRepositoryJdbc implements UserdataUserRepository {
             ps.setString(3, user.getFirstname());
             ps.setString(4, user.getLastName());
             ps.setBytes(5, user.getAvatar());
-            //ps.setString(6, user.getCountryId().toString());
+            ps.setString(6, user.getCountry().getId().toString());
 
             ps.executeUpdate();
             return user;
@@ -76,6 +114,26 @@ public class UserdataUserRepositoryJdbc implements UserdataUserRepository {
         }
     }
 
+    @Override
+    public UserEntity update(UserEntity user) {
+        try (PreparedStatement ps =
+                     holder(CFG.apiJdbcUrl()).connection().prepareStatement(SQL_UPDATE_USER)) {
+
+            ps.setString(1, user.getUsername());
+            ps.setString(2, user.getFirstname());
+            ps.setString(3, user.getLastName());
+            ps.setBytes(4, user.getAvatar());
+            ps.setString(5, user.getCountry().getId().toString());
+            ps.setString(6, user.getId().toString());
+
+            ps.executeUpdate();
+            return user;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update user: id=" + user.getId(), e);
+        }
+    }
+
+    @NotNull
     @Override
     public Optional<UserEntity> findById(UUID id) {
         try (PreparedStatement ps = holder(CFG.apiJdbcUrl()).connection().prepareStatement(SQL_FIND_USER_BY_ID)) {
@@ -113,9 +171,42 @@ public class UserdataUserRepositoryJdbc implements UserdataUserRepository {
         }
     }
 
+    @NotNull
     @Override
     public Optional<UserEntity> findByUsername(String username) {
-        throw new UnsupportedOperationException("Метод не поддерживается");
+        try (PreparedStatement ps =
+                     holder(CFG.apiJdbcUrl()).connection().prepareStatement(SQL_FIND_USER_BY_USERNAME)) {
+
+            ps.setString(1, username);
+            ResultSet rs = ps.executeQuery();
+
+            if (!rs.next()) {
+                return Optional.empty();
+            }
+
+            return Optional.of(buildUser(rs));
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find user by username=" + username, e);
+        }
+    }
+
+    @NotNull
+    @Override
+    public List<UserEntity> findAll() {
+        try (PreparedStatement ps =
+                     holder(CFG.apiJdbcUrl()).connection().prepareStatement(SQL_FIND_ALL_USERS)) {
+
+            ResultSet rs = ps.executeQuery();
+            List<UserEntity> users = new ArrayList<>();
+
+            while (rs.next()) {
+                users.add(buildUser(rs));
+            }
+
+            return users;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find all users", e);
+        }
     }
 
     private UserEntity buildUser(ResultSet rs) throws SQLException {
@@ -127,7 +218,11 @@ public class UserdataUserRepositoryJdbc implements UserdataUserRepository {
         user.setAvatar(rs.getBytes("avatar"));
 
         String countryId = rs.getString("country_id");
-        //user.setCountryId(countryId != null ? UUID.fromString(countryId) : null);
+        if (countryId != null) {
+            CountryEntity country = new CountryEntity();
+            country.setId(UUID.fromString(countryId));
+            user.setCountry(country);
+        }
 
         return user;
     }

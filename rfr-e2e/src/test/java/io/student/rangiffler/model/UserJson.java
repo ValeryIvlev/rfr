@@ -1,8 +1,21 @@
 package io.student.rangiffler.model;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public record UserJson(
-        Data data
+        Data data,
+        @JsonIgnore
+        TestData testData
 ) {
+
+    public UserJson addTestData(TestData testData) {
+        return new UserJson(
+                this.data,
+                testData
+        );
+    }
+
     public record Data(
             User user
     ) {}

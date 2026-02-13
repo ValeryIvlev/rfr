@@ -8,9 +8,11 @@ import io.student.rangiffler.data.entity.UserEntity;
 import io.student.rangiffler.data.repository.UserdataUserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,6 +23,7 @@ public class UserdataUserRepositoryHibernate implements UserdataUserRepository {
     private final EntityManager entityManager = em(CFG.apiJdbcUrl());
 
 
+    @NotNull
     @Override
     public UserEntity create(UserEntity user) {
         entityManager.joinTransaction();
@@ -28,6 +31,13 @@ public class UserdataUserRepositoryHibernate implements UserdataUserRepository {
         return user;
     }
 
+    @Override
+    public UserEntity update(UserEntity user) {
+        entityManager.joinTransaction();
+        return entityManager.merge(user);
+    }
+
+    @NotNull
     @Override
     public Optional<UserEntity> findById(UUID id) {
         return Optional.ofNullable(entityManager.find(UserEntity.class, id));
@@ -54,6 +64,7 @@ public class UserdataUserRepositoryHibernate implements UserdataUserRepository {
         upsertFriendship(addressee.getId(), requester.getId(), FriendshipStatus.ACCEPTED);
     }
 
+    @NotNull
     @Override
     public Optional<UserEntity> findByUsername(String username) {
         try {
@@ -62,6 +73,13 @@ public class UserdataUserRepositoryHibernate implements UserdataUserRepository {
         } catch (NoResultException e) {
             return Optional.empty();
         }
+    }
+
+    @NotNull
+    @Override
+    public List<UserEntity> findAll() {
+        return entityManager.createQuery("select u from UserEntity u", UserEntity.class)
+                .getResultList();
     }
 
     private FriendShipId fid(UUID requesterId, UUID addresseeId) {

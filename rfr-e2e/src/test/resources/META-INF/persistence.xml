@@ -23,6 +23,7 @@
         <class>io.student.rangiffler.data.entity.UserEntity</class>
         <class>io.student.rangiffler.data.entity.FriendshipEntity</class>
         <class>io.student.rangiffler.data.entity.CountryEntity</class>
+        <class>io.student.rangiffler.data.entity.PhotoEntity</class>
         <properties>
             <property name="hibernate.transaction.coordinator_class" value="jta"/>
             <property name="hibernate.transaction.jta.platform"

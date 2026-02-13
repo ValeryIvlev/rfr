@@ -1,16 +1,14 @@
 package io.student.rangiffler.service;
 
 import io.student.rangiffler.config.Config;
-import io.student.rangiffler.data.entity.AuthUserEntity;
-import io.student.rangiffler.data.entity.Authority;
-import io.student.rangiffler.data.entity.AuthorityEntity;
-import io.student.rangiffler.data.entity.UserEntity;
+import io.student.rangiffler.data.entity.*;
 import io.student.rangiffler.data.repository.AuthUserRepository;
 import io.student.rangiffler.data.repository.UserdataUserRepository;
 import io.student.rangiffler.data.repository.impl.AuthUserRepositoryJdbc;
 import io.student.rangiffler.data.repository.impl.AuthUserRepositorySpringJdbc;
 import io.student.rangiffler.data.repository.impl.UserdataUserRepositoryJdbc;
 import io.student.rangiffler.data.tpl.JdbcTransactionTemplate;
+import io.student.rangiffler.model.TestData;
 import io.student.rangiffler.model.UserJson;
 
 import java.util.Arrays;
@@ -174,7 +172,7 @@ public class UserDbClientRepository {
                                 null,
                                 null
                         )
-                )
+                ), null
         );
     }
 }

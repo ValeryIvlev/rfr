@@ -10,8 +10,10 @@ import io.student.rangiffler.data.dao.impl.AuthorityDaoSpringJdbc;
 import io.student.rangiffler.data.entity.AuthUserEntity;
 import io.student.rangiffler.data.entity.Authority;
 import io.student.rangiffler.data.entity.AuthorityEntity;
+import io.student.rangiffler.data.entity.PhotoEntity;
 import io.student.rangiffler.data.tpl.JdbcTransactionTemplate;
 import io.student.rangiffler.data.tpl.XaTransactionTemplate;
+import io.student.rangiffler.model.TestData;
 import io.student.rangiffler.model.UserJson;
 
 import java.util.Arrays;
@@ -138,7 +140,7 @@ public class UserDbClient {
                                 null,
                                 null
                         )
-                )
+                ), null
         );
     }
 }

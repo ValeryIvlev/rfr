@@ -5,6 +5,7 @@ import io.student.rangiffler.data.entity.AuthUserEntity;
 import io.student.rangiffler.data.entity.Authority;
 import io.student.rangiffler.data.entity.AuthorityEntity;
 import io.student.rangiffler.data.repository.AuthUserRepository;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -66,8 +67,31 @@ public class AuthUserRepositoryJdbc implements AuthUserRepository {
             JOIN `rangiffler-auth`.`authority` a ON u.id = a.user_id
             WHERE u.username = ?
             """;
+    private final String SQL_UPDATE_USER =
+            """
+               UPDATE `rangiffler-auth`.`user`
+               SET password = ?, enabled = ?, account_non_expired = ?, account_non_locked = ?, credentials_non_expired = ?
+               WHERE id = UUID_TO_BIN(?, true);
+            """;
 
+    private static final String FIND_BY_ID_SQL =
+            """
+                SELECT 
+                    BIN_TO_UUID(u.id, true) AS id,
+                    u.username,
+                    u.password,
+                    u.enabled,
+                    u.account_non_expired,
+                    u.account_non_locked,
+                    u.credentials_non_expired,
+                    BIN_TO_UUID(a.id, true) AS authority_id,
+                    a.authority
+                FROM `rangiffler-auth`.`user` u
+                LEFT JOIN `rangiffler-auth`.`authority` a ON u.id = a.user_id
+                WHERE u.id = UUID_TO_BIN(?, true)
+            """;
 
+    @NotNull
     @Override
     public AuthUserEntity createUser(AuthUserEntity authUserEntity) {
         String encodedPassword = passwordEncoder.encode(authUserEntity.getPassword());
@@ -104,6 +128,27 @@ public class AuthUserRepositoryJdbc implements AuthUserRepository {
         }
     }
 
+    @NotNull
+    @Override
+    public AuthUserEntity updateUser(AuthUserEntity user) {
+        String encodedPassword = passwordEncoder.encode(user.getPassword());
+
+        try (PreparedStatement ps = holder(CFG.authJdbcUrl()).connection().prepareStatement(SQL_UPDATE_USER)) {
+            ps.setString(1, encodedPassword);
+            ps.setBoolean(2, user.getEnabled());
+            ps.setBoolean(3, user.getAccountNonExpired());
+            ps.setBoolean(4, user.getAccountNonLocked());
+            ps.setBoolean(5, user.getCredentialsNonExpired());
+            ps.setString(6, user.getId().toString());
+
+            ps.executeUpdate();
+            user.setPassword(encodedPassword);
+            return user;
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update user", e);
+        }
+    }
+
     @Override
     public void deleteUserByUserName(String userName) {
         try (PreparedStatement ps = holder(CFG.authJdbcUrl()).connection().prepareStatement(SQL_DELETE_USER_BY_USERNAME)) {
@@ -114,6 +159,7 @@ public class AuthUserRepositoryJdbc implements AuthUserRepository {
         }
     }
 
+    @NotNull
     @Override
     public List<AuthUserEntity> findAll() {
         try (PreparedStatement ps = holder(CFG.authJdbcUrl()).connection().prepareStatement(FIND_ALL_SQL)) {
@@ -145,11 +191,46 @@ public class AuthUserRepositoryJdbc implements AuthUserRepository {
     }
 
 
+    @NotNull
     @Override
     public Optional<AuthUserEntity> findById(UUID id) {
-        return Optional.empty();
+        try (PreparedStatement ps = holder(CFG.authJdbcUrl()).connection().prepareStatement(FIND_BY_ID_SQL)) {
+
+            ps.setString(1, id.toString());
+            ResultSet rs = ps.executeQuery();
+
+            AuthUserEntity user = null;
+
+            while (rs.next()) {
+                if (user == null) {
+                    user = new AuthUserEntity();
+                    user.setId(UUID.fromString(rs.getString("id")));
+                    user.setUsername(rs.getString("username"));
+                    user.setPassword(rs.getString("password"));
+                    user.setEnabled(rs.getBoolean("enabled"));
+                    user.setAccountNonExpired(rs.getBoolean("account_non_expired"));
+                    user.setAccountNonLocked(rs.getBoolean("account_non_locked"));
+                    user.setCredentialsNonExpired(rs.getBoolean("credentials_non_expired"));
+                }
+
+                String authorityName = rs.getString("authority");
+                if (authorityName != null) {
+                    AuthorityEntity authority = new AuthorityEntity();
+                    authority.setId(UUID.fromString(rs.getString("authority_id")));
+                    authority.setAuthority(Authority.valueOf(authorityName));
+                    authority.setUser(user);
+                    user.getAuthorities().add(authority);
+                }
+            }
+
+            return Optional.ofNullable(user);
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find user by id = " + id, e);
+        }
     }
 
+    @NotNull
     @Override
     public Optional<AuthUserEntity> findByUsername(String username) {
         try (PreparedStatement ps =
